@@ -6,7 +6,11 @@ import time
 import string
 from copy import copy as duplicate
  
- 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
+
 class Crossword(object):
     def __init__(self, cols, rows, empty='-', maxloops=2000, available_words=[]):
         self.cols = cols
@@ -391,7 +395,57 @@ class Word(object):
     
     return word_list
 
-#start_full = float(time.time())
+def export_to_pdf(self, filename="crossword.pdf", title="Aaron and Ella"):
+    """Export the crossword display and legend to a PDF."""
+    # Prepare the document
+    doc = SimpleDocTemplate(filename, pagesize=letter)
+    elements = []
+
+    # Add the title "Aaron and Ella" at the top
+    styles = getSampleStyleSheet()
+    title_style = styles['Title']  # Use 'Title' style from the stylesheet
+    title_paragraph = Paragraph(title, title_style)
+    elements.append(title_paragraph)
+
+    # Generate the grid with numbers
+    table_data = []
+    for row in self.grid:
+        table_row = []
+        for cell in row:
+            # Check if the cell is a number (int or str)
+            if isinstance(cell, (int, str)) and str(cell).isdigit():
+                table_row.append(str(cell))  # Add the number if it's a number (int or str)
+            else:
+                table_row.append("")  # Ensure letters are not printed
+        table_data.append(table_row)
+
+    # Create a table with cell styles
+    table = Table(table_data, colWidths=[30] * self.cols, rowHeights=[30] * self.rows)  # Fixed width and height for uniform cells
+    style = TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.15, colors.white),  # Borders for all cells
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),  # Background color
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Center align text
+    ])
+
+    # Apply style for the cells containing the word numbers
+    for word in self.current_word_list:
+        for i in range(word.length):
+            if word.vertical:
+                col, row = word.col - 1, word.row - 1 + i
+            else:
+                col, row = word.col - 1 + i, word.row - 1
+            style.add('BOX', (col, row), (col, row), 1, colors.black)  # Borders around the numbered cells
+
+    table.setStyle(style)
+    elements.append(table)
+
+    # Add legend
+    legend_data = [[self.legend()]]
+    legend_table = Table(legend_data)
+    elements.append(legend_table)
+
+    # Build PDF
+    doc.build(elements)
  
 # word_list = [
 #     ['saffron', 'The dried, orange yellow plant used to as dye and as a cooking spice.'],
@@ -426,5 +480,5 @@ print(a.display())
 print(a.legend())
 print(len(a.current_word_list), 'out of', len(word_list))
 print(a.debug)
-#end_full = float(time.time())
-#print(end_full - start_full)
+
+export_to_pdf(a, filename="crossword.pdf")
