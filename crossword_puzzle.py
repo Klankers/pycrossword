@@ -1,15 +1,24 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
+#   For VI usage in the terminal
+
+"""
+A crossword puzzle generator.
+
+Code borrowed and expanded from Sealhaung:
+https://github.com/sealhuang/pycrossword
+"""
 
 import random
 import re
-import time
 import string
+import time
 from copy import copy as duplicate
- 
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
+
 
 class Crossword(object):
     def __init__(self, cols, rows, empty='-', maxloops=2000, available_words=[]):
@@ -68,8 +77,6 @@ class Crossword(object):
                     if word not in copy.current_word_list:
                         copy.fit_and_add(word)
                 x += 1
-            #print(copy.solution())
-            #print(len(copy.current_word_list), len(self.current_word_list), self.debug)
             # buffer the best crossword by comparing placed words
             if len(copy.current_word_list) > len(self.current_word_list):
                 self.current_word_list = copy.current_word_list
@@ -116,8 +123,6 @@ class Crossword(object):
                             pass
 
         # example: coordlist[0] = [col, row, vertical, col + row, score]
-        #print(word.word)
-        #print(coordlist)
         new_coordlist = self.sort_coordlist(coordlist, word)
         #print(new_coordlist)
 
@@ -336,7 +341,36 @@ class Crossword(object):
  
         outStr = re.sub(r'[a-z]', ' ', outStr)
         return outStr
- 
+    
+    def display_with_borders(self, order=True):
+        """Return the grid with borders for cells containing letters, ensuring letters are hidden."""
+        if order:
+            self.order_number_words()
+
+        # Create a new grid with letters replaced by hidden placeholders
+        hidden_grid = []
+        for row in self.grid:
+            hidden_row = []
+            for cell in row:
+                if cell != self.empty and not cell.isdigit():  # Letter cells
+                    hidden_row.append(" ")  # Hide the letter
+                else:  # Empty or numbered cells
+                    hidden_row.append(cell)
+            hidden_grid.append(hidden_row)
+
+        # Construct the bordered output
+        output = []
+        for row in hidden_grid:
+            output_row = []
+            for cell in row:
+                if cell != self.empty:  # Add a border for non-empty cells
+                    output_row.append("[ ]")
+                else:  # No border for empty cells
+                    output_row.append("   ")
+            output.append(" ".join(output_row))
+
+        return "\n".join(output)
+
     def word_bank(self):
         outStr = ''
         temp_list = duplicate(self.current_word_list)
@@ -347,10 +381,20 @@ class Crossword(object):
         return outStr
  
     def legend(self):
-        """Must order first."""
-        outStr = ''
+        """Must order first.
+        Splits the legend into horizontal and vertical clues."""
+        horizontal_clues = []
+        vertical_clues = []
+
         for word in self.current_word_list:
-            outStr += '%d. (%d,%d) %s: %s\n' % (word.number, word.col, word.row, word.down_across(), word.clue)
+            clue = f'{word.number}. ({word.col},{word.row}) {word.down_across()}: {word.clue}'
+            if word.vertical:
+                vertical_clues.append(clue)
+            else:
+                horizontal_clues.append(clue)
+
+        # Combine the horizontal clues first, followed by vertical ones
+        outStr = "\n".join(horizontal_clues) + "\n\n" + "\n".join(vertical_clues)
         return outStr
 
 
@@ -375,8 +419,8 @@ class Word(object):
     def __repr__(self):
         return self.word
  
- def load_word_list_from_txt(filename="words.txt"):
-    """Ability to create from simple .txt file, rather than hardcoding"""
+
+def load_word_list_from_txt(filename="words.txt"):
     word_list = []
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
@@ -394,6 +438,7 @@ class Word(object):
             word_list.append([word, definition])
     
     return word_list
+
 
 def export_to_pdf(self, filename="crossword.pdf", title="Aaron and Ella"):
     """Export the crossword display and legend to a PDF."""
@@ -471,7 +516,7 @@ def export_to_pdf(self, filename="crossword.pdf", title="Aaron and Ella"):
 # ]
 word_list = load_word_list_from_txt()
  
-a = Crossword(13, 13, '-', 5000, word_list)
+a = Crossword(20, 20, '-', 5000, word_list)
 a.compute_crossword(2)
 print(a.word_bank())
 print(a.solution())
